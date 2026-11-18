@@ -1,0 +1,15 @@
+
+services:
+  - type: web
+    name: lucca-proxy
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ALLOWED_HOSTS
+        value: example.com,developer.mozilla.org
+      - key: FRONTEND_ORIGIN
+        value: "*"
