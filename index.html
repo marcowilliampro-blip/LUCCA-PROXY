@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LUCCA | Gaming & Media</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#101018;color:#fff;
+ font-family:Arial,sans-serif;
+}
+header{
+ height:75px;padding:0 6%;
+ display:flex;align-items:center;justify-content:space-between;
+ background:#171725;border-bottom:1px solid #29293b;
+ position:sticky;top:0;z-index:10;
+}
+.logo{font-size:29px;font-weight:900;color:#a77bff;letter-spacing:3px}
+nav{display:flex;gap:20px;flex-wrap:wrap}
+nav a{color:#c4c1d5;text-decoration:none;font-size:14px}
+nav a:hover{color:#b28cff}
+main{max-width:1150px;margin:auto;padding:30px 20px}
+.hero{
+ text-align:center;padding:45px 15px;
+ background:linear-gradient(135deg,#30204c,#191929);
+ border-radius:20px;margin-bottom:30px;
+}
+.hero h1{font-size:42px;margin:0 0 10px}
+.hero span{color:#ad87ff}
+.hero p{color:#bbb7cc}
+.search{
+ width:min(550px,100%);padding:15px;
+ border-radius:12px;border:1px solid #44405b;
+ background:#11111d;color:white;font-size:15px;
+}
+.section{margin:35px 0}
+.section h2{font-size:23px;margin-bottom:18px}
+.grid{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+ gap:16px;
+}
+.card{
+ background:#1d1d2d;border:1px solid #303047;
+ padding:20px;border-radius:16px;transition:.2s;
+}
+.card:hover{transform:translateY(-4px);border-color:#986bff}
+.card .emoji{font-size:32px;margin-bottom:12px}
+.card h3{margin:0 0 9px}
+.card p{color:#aaa8bd;font-size:14px;line-height:1.5}
+button{
+ border:0;background:#9165ed;color:white;
+ padding:11px 16px;border-radius:9px;
+ cursor:pointer;font-weight:bold;
+}
+button:hover{background:#a986ff}
+.secondary{background:#343348}
+.player{
+ background:#1d1d2d;padding:20px;
+ border:1px solid #33334b;border-radius:17px;
+}
+.player iframe{
+ display:block;width:100%;height:480px;
+ border:0;border-radius:12px;background:#08080e;
+}
+.player-top{
+ display:flex;justify-content:space-between;
+ align-items:center;gap:10px;flex-wrap:wrap;
+ margin-bottom:15px;
+}
+.player input{
+ width:100%;padding:14px;margin:8px 0 12px;
+ background:#10101a;border:1px solid #45445d;
+ border-radius:9px;color:white;font-size:14px;
+}
+.help{color:#aaa8bd;font-size:13px;line-height:1.6}
+.notice{
+ padding:14px;background:#29233b;
+ border-left:3px solid #a77bff;
+ border-radius:8px;color:#d0c8e7;
+ font-size:13px;line-height:1.6;
+ margin-top:15px;
+}
+.hidden{display:none}
+footer{
+ text-align:center;color:#88869c;
+ border-top:1px solid #29293b;
+ padding:25px;font-size:13px;
+}
+@media(max-width:600px){
+ header{height:auto;padding:18px;align-items:flex-start;flex-direction:column;gap:15px}
+ nav{gap:12px}
+ .hero h1{font-size:32px}
+ .player iframe{height:350px}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+ <div class="logo">LUCCA</div>
+ <nav>
+  <a href="#juegos">Juegos</a>
+  <a href="#youtube">YouTube</a>
+  <a href="#tiktok">TikTok</a>
+  <a href="#spotify">Spotify</a>
+  <a href="#privacidad">Privacidad</a>
+ </nav>
+</header>
+
+<main>
+
+<section class="hero">
+ <h1>WELCOME TO <span>LUCCA</span></h1>
+ <p>Gaming, videos and music in one place.</p>
+ <input class="search" id="search" placeholder="🔎 Buscar en LUCCA...">
+</section>
+
+<!-- JUEGOS -->
+<section class="section" id="juegos">
+ <h2>🎮 Juegos</h2>
+ <div class="grid" id="gameGrid">
+
+  <article class="card">
+   <div class="emoji">🟩</div>
+   <h3>2048</h3>
+   <p>Juego de números y estrategia.</p>
+   <button onclick="openGame('https://play2048.co/')">Abrir juego</button>
+  </article>
+
+  <article class="card">
+   <div class="emoji">♟️</div>
+   <h3>Ajedrez</h3>
+   <p>Entrena tu estrategia jugando.</p>
+   <button onclick="openGame('https://lichess.org/')">Abrir juego</button>
+  </article>
+
+  <article class="card">
+   <div class="emoji">🌐</div>
+   <h3>Mi juego</h3>
+   <p>Agrega un juego compatible con reproductor integrado.</p>
+   <button onclick="showGameInput()">Configurar</button>
+  </article>
+
+ </div>
+</section>
+
+<!-- REPRODUCTOR DE JUEGOS -->
+<section class="section" id="gamePlayer">
+ <div class="player">
+  <div class="player-top">
+   <h2>🕹️ Reproductor de juegos</h2>
+   <button class="secondary" onclick="closePlayer()">Cerrar</button>
+  </div>
+  <p class="help" id="gameMessage">
+   Selecciona un juego para abrirlo aquí.
+  </p>
+  <iframe id="gameFrame" title="Juego" class="hidden"
+   allowfullscreen></iframe>
+  <div id="gameInputArea" class="hidden">
+   <input id="gameUrl" placeholder="Pega aquí el enlace HTTPS del juego">
+   <button onclick="loadCustomGame()">Cargar juego</button>
+  </div>
+ </div>
+</section>
+
+<!-- YOUTUBE -->
+<section class="section" id="youtube">
+ <h2>▶ YouTube</h2>
+ <div class="player">
+  <p class="help">Pega el enlace de un video de YouTube.</p>
+  <input id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=...">
+  <button onclick="loadYouTube()">Reproducir en LUCCA</button>
+  <iframe id="youtubeFrame" class="hidden"
+   title="YouTube" allowfullscreen
+   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share">
+  </iframe>
+ </div>
+</section>
+
+<!-- TIKTOK -->
+<section class="section" id="tiktok">
+ <h2>♪ TikTok</h2>
+ <div class="player">
+  <p class="help">Pega el enlace de un video público de TikTok.</p>
+  <input id="tiktokUrl" placeholder="https://www.tiktok.com/@usuario/video/ID">
+  <button onclick="loadTikTok()">Mostrar video</button>
+  <iframe id="tiktokFrame" class="hidden"
+   title="TikTok" allowfullscreen
+   allow="encrypted-media; fullscreen">
+  </iframe>
+ </div>
+</section>
+
+<!-- SPOTIFY -->
+<section class="section" id="spotify">
+ <h2>🎵 Spotify</h2>
+ <div class="player">
+  <p class="help">Pega el enlace de una canción, álbum o playlist.</p>
+  <input id="spotifyUrl" placeholder="https://open.spotify.com/playlist/...">
+  <button onclick="loadSpotify()">Reproducir en LUCCA</button>
+  <iframe id="spotifyFrame" class="hidden"
+   title="Spotify" height="352"
+   allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
+  </iframe>
+ </div>
+</section>
+
+<!-- PRIVACIDAD -->
+<section class="section" id="privacidad">
+ <h2>🔒 Privacidad digital</h2>
+ <div class="card">
+  <h3>Seguridad y navegación</h3>
+  <p>Conoce cómo funcionan las VPN, los proxies y la protección de datos.</p>
+  <p>
+   <a href="https://www.mozilla.org/es-ES/privacy/"
+    target="_blank" rel="noopener" style="color:#b99aff">
+    Consejos de privacidad
+   </a>
+  </p>
+  <p>
+   <a href="https://www.cloudflare.com/learning/access-management/what-is-a-vpn/"
+    target="_blank" rel="noopener" style="color:#b99aff">
+    Aprende qué es una VPN
+   </a>
+  </p>
+ </div>
+</section>
+
+</main>
+
+<footer>
+ LUCCA © 2026 · Gaming & Multimedia
+</footer>
+
+<script>
+function validUrl(value){
+ try{
+  const url=new URL(value);
+  return url.protocol==="https:" ? url : null;
+ }catch(e){return null}
+}
+
+function showError(message){
+ alert(message);
+}
+
+function openGame(url){
+ const frame=document.getElementById("gameFrame");
+ const message=document.getElementById("gameMessage");
+ const valid=validUrl(url);
+ if(!valid)return showError("Enlace no válido.");
+ frame.src=valid.href;
+ frame.classList.remove("hidden");
+ message.textContent="Si el sitio permite la inserción, el juego aparecerá aquí.";
+ document.getElementById("gamePlayer").scrollIntoView({behavior:"smooth"});
+}
+
+function showGameInput(){
+ document.getElementById("gameInputArea").classList.remove("hidden");
+ document.getElementById("gamePlayer").scrollIntoView({behavior:"smooth"});
+}
+
+function loadCustomGame(){
+ const url=validUrl(document.getElementById("gameUrl").value.trim());
+ if(!url)return showError("Introduce un enlace HTTPS válido.");
+ openGame(url.href);
+}
+
+function closePlayer(){
+ const frame=document.getElementById("gameFrame");
+ frame.src="about:blank";
+ frame.classList.add("hidden");
+ document.getElementById("gameMessage").textContent="Selecciona un juego para abrirlo aquí.";
+}
+
+function loadYouTube(){
+ const value=document.getElementById("youtubeUrl").value.trim();
+ let id="";
+ try{
+  const url=new URL(value);
+  if(url.hostname==="youtu.be"){
+   id=url.pathname.slice(1);
+  }else if(url.hostname.endsWith("youtube.com")){
+   if(url.pathname==="/watch")id=url.searchParams.get("v")||"";
+   else if(url.pathname.startsWith("/shorts/"))id=url.pathname.split("/")[2]||"";
+   else if(url.pathname.startsWith("/embed/"))id=url.pathname.split("/")[2]||"";
+  }
+ }catch(e){}
+ if(!/^[a-zA-Z0-9_-]{11}$/.test(id))
+  return showError("No se reconoce el enlace de YouTube.");
+ const frame=document.getElementById("youtubeFrame");
+ frame.src="https://www.youtube-nocookie.com/embed/"+id;
+ frame.classList.remove("hidden");
+}
+
+function loadTikTok(){
+ const value=document.getElementById("tiktokUrl").value.trim();
+ const match=value.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/i);
+ if(!match)return showError("Pega un enlace público de un video de TikTok.");
+ const frame=document.getElementById("tiktokFrame");
+ frame.src="https://www.tiktok.com/player/v1/"+match[1];
+ frame.classList.remove("hidden");
+ frame.style.marginTop="15px";
+}
+
+function loadSpotify(){
+ const value=document.getElementById("spotifyUrl").value.trim();
+ let url;
+ try{url=new URL(value)}catch(e){return showError("Enlace no válido.");}
+ if(url.hostname!=="open.spotify.com")
+  return showError("Usa un enlace de open.spotify.com.");
+ const parts=url.pathname.split("/").filter(Boolean);
+ if(!["track","album","playlist","episode","show"].includes(parts[0])||!parts[1])
+  return showError("Usa el enlace de una canción, álbum o playlist.");
+ const frame=document.getElementById("spotifyFrame");
+ frame.src="https://open.spotify.com/embed/"+parts[0]+"/"+parts[1];
+ frame.classList.remove("hidden");
+}
+
+document.getElementById("search").addEventListener("input",function(){
+ const term=this.value.toLowerCase();
+ document.querySelectorAll(".card").forEach(card=>{
+  card.style.display=card.innerText.toLowerCase().includes(term)?"":"none";
+ });
+});
+</script>
+
+</body>
+</html>
