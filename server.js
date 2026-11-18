@@ -6,7 +6,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const ALLOWED_HOSTS = (
-  process.env.ALLOWED_HOSTS || "example.com"
+  process.env.ALLOWED_HOSTS ||
+  "example.com,www.example.com,youtube.com,www.youtube.com,m.youtube.com,tiktok.com,www.tiktok.com,google.com,www.google.com,instagram.com,www.instagram.com,spotify.com,www.spotify.com,open.spotify.com,chatgpt.com,www.chatgpt.com"
 )
   .split(",")
   .map(host => host.trim().toLowerCase())
