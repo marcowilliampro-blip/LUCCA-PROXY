@@ -9,6 +9,7 @@
  *   LUCCA_SECRET      clave para firmar la sesión de login (recomendado fijarla)
  *   LUCCA_COOKIES     "off" para no guardar cookies de los sitios visitados
  *   TRUST_PROXY       "1" si va detrás de Nginx/Caddy/Cloudflare
+ *   YOUTUBE_API_KEY   clave de la API de YouTube Data v3 (para buscar videos en /youtube)
  */
 const express = require('express');
 const cheerio = require('cheerio');
@@ -374,6 +375,134 @@ app.post('/admin/users/delete', requireAdmin, checkCsrf, (req, res) => {
   res.redirect(303, '/admin?m=deleted');
 });
 
+/* ====================================================================
+ *  YouTube dentro de LUCCA: búsqueda + reproductor oficial incrustado
+ *  (YouTube no se puede reescribir como una web normal; ver README)
+ * ==================================================================== */
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || '';
+const YT_HOST_RE = /(^|\.)(youtube\.com|youtube-nocookie\.com)$|^youtu\.be$/i;
+const YT_ID_RE = /^[\w-]{11}$/;
+const ytCache = new Map(); // búsqueda -> { t, items } (ahorra cuota de la API)
+
+function extractVideoId(text) {
+  const t = String(text || '').trim();
+  let u;
+  try { u = new URL(/^https?:\/\//i.test(t) ? t : 'https://' + t); } catch { return null; }
+  if (!YT_HOST_RE.test(u.hostname)) return null;
+  let id = null;
+  if (u.hostname.toLowerCase() === 'youtu.be') id = u.pathname.slice(1).split('/')[0];
+  else if (u.searchParams.get('v')) id = u.searchParams.get('v');
+  else {
+    const m = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([\w-]{11})/);
+    if (m) id = m[1];
+  }
+  return id && YT_ID_RE.test(id) ? id : null;
+}
+
+function decodeEntities(s) {
+  return String(s)
+    .replace(/&#(\d+);/g, (m, n) => String.fromCodePoint(Number(n)))
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+async function searchYouTube(q) {
+  const cacheKey = q.toLowerCase();
+  const hit = ytCache.get(cacheKey);
+  if (hit && Date.now() - hit.t < 10 * 60_000) return hit.items;
+  const api = new URL('https://www.googleapis.com/youtube/v3/search');
+  api.search = new URLSearchParams({
+    part: 'snippet', type: 'video', videoEmbeddable: 'true', maxResults: '18', q, key: YOUTUBE_API_KEY,
+  }).toString();
+  const r = await fetch(api, { signal: AbortSignal.timeout(10000) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((data && data.error && data.error.message) || 'La búsqueda de YouTube falló.');
+  const items = (data.items || [])
+    .filter((i) => i.id && YT_ID_RE.test(i.id.videoId || ''))
+    .map((i) => {
+      const thumb = (i.snippet && i.snippet.thumbnails && i.snippet.thumbnails.medium && i.snippet.thumbnails.medium.url) || '';
+      return {
+        id: i.id.videoId,
+        title: decodeEntities((i.snippet && i.snippet.title) || ''),
+        channel: decodeEntities((i.snippet && i.snippet.channelTitle) || ''),
+        thumb: thumb.startsWith('https://i.ytimg.com/') ? thumb : '',
+      };
+    });
+  if (ytCache.size > 200) ytCache.delete(ytCache.keys().next().value);
+  ytCache.set(cacheKey, { t: Date.now(), items });
+  return items;
+}
+
+function youtubePage({ q = '', v = '', items = [], error = '', needsKey = false }) {
+  const cards = items.map((it) => {
+    const href = `/youtube?v=${it.id}&q=${encodeURIComponent(q)}`;
+    return `<a class="card" href="${escapeHtml(href)}">${it.thumb ? `<img src="${escapeHtml(it.thumb)}" alt="" loading="lazy">` : '<img alt="">'}
+<div><strong>${escapeHtml(it.title)}</strong><small>${escapeHtml(it.channel)}</small></div></a>`;
+  }).join('');
+  const player = v ? `<div class="player"><iframe src="https://www.youtube-nocookie.com/embed/${v}?autoplay=1&rel=0"
+title="Reproductor de YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+<p class="hint">Si el video no se reproduce, su autor no permite verlo fuera de YouTube.</p>` : '';
+  return `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><meta name="referrer" content="strict-origin-when-cross-origin">
+<title>LUCCA · YouTube</title>
+<style>
+:root{--bg:#0f0f17;--bar:#14141f;--panel:#1a1a26;--line:#2a2a3c;--text:#e8e8f0;--muted:#9a9ab0;--accent:#6366f1;--accent-hover:#7477f5;--accent-soft:#818cf8;--bad:#f87171}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;align-items:center;gap:.6rem;padding:.9rem 1.25rem;background:var(--bar);border-bottom:1px solid var(--line)}
+header a{color:var(--text);text-decoration:none;font-weight:800;font-size:1.15rem}header a span{color:var(--accent-soft)}header .sep{color:var(--muted)}
+main{width:min(100% - 2rem,70rem);margin:1.5rem auto 3rem;display:grid;gap:1.25rem}
+form{display:flex;gap:.5rem;padding:.5rem;background:var(--bar);border:1px solid var(--line);border-radius:12px;margin:0}
+form:focus-within{border-color:var(--accent)}
+input{flex:1;min-width:0;border:0;background:transparent;color:var(--text);font:inherit;padding:.6rem .75rem}input:focus{outline:none}
+button{border:0;border-radius:8px;padding:0 1.2rem;background:var(--accent);color:#fff;font:600 .95rem Inter,system-ui,sans-serif;cursor:pointer}
+button:hover{background:var(--accent-hover)}:focus-visible{outline:2px solid var(--accent-soft);outline-offset:2px}
+.player{position:relative;aspect-ratio:16/9;width:min(100%,calc(68vh * 16 / 9));margin:0 auto;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.hint{margin:0;color:var(--muted);font-size:.9rem}.err{margin:0;color:var(--bad);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:1rem}
+.card{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.card:hover{border-color:var(--accent)}
+.card img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#000}
+.card div{padding:.7rem .8rem}
+.card strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:.95rem;line-height:1.3}
+.card small{color:var(--muted)}
+</style>
+<header><a href="/">LUCCA <span>Proxy</span></a><span class="sep">/</span><strong>YouTube</strong></header>
+<main>
+<form action="/youtube" method="get" role="search">
+<input name="q" value="${escapeHtml(q)}" placeholder="Busca videos o pega un enlace de YouTube" autocomplete="off" required aria-label="Buscar en YouTube">
+<button>Buscar</button>
+</form>
+${player}
+${error ? `<p class="err" role="alert">${escapeHtml(error)}</p>` : ''}
+${needsKey ? '<p class="hint">Para buscar por texto, el administrador debe configurar YOUTUBE_API_KEY. Mientras tanto, pega el enlace de un video.</p>' : ''}
+${!v && !q ? '<p class="hint">Escribe lo que quieres ver o pega el enlace de un video de YouTube.</p>' : ''}
+${cards ? `<div class="grid">${cards}</div>` : ''}
+</main></html>`;
+}
+
+app.get('/youtube', async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 200);
+  let v = String(req.query.v || '');
+  if (!YT_ID_RE.test(v)) v = '';
+  const linked = q ? extractVideoId(q) : null;
+  if (linked) return res.redirect(303, '/youtube?v=' + linked);
+  const page = { q, v };
+  if (q) {
+    if (!YOUTUBE_API_KEY) page.needsKey = true;
+    else {
+      try {
+        page.items = await searchYouTube(q);
+        if (!page.items.length) page.error = 'No se encontraron videos.';
+      } catch (err) {
+        page.error = err.message;
+      }
+    }
+  }
+  res.type('html').send(youtubePage(page));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* ====================================================================
@@ -708,6 +837,12 @@ async function handle(req, res) {
     if (isBlocked(url.hostname)) {
       return errorPage(res, 403, 'Sitio bloqueado', `El administrador de LUCCA bloqueó ${url.hostname}.`);
     }
+    // YouTube no funciona como web reescrita: lo mandamos al reproductor propio de LUCCA
+    if (YT_HOST_RE.test(url.hostname)) {
+      const id = extractVideoId(url.href);
+      const sq = url.pathname === '/results' ? url.searchParams.get('search_query') : null;
+      return res.redirect(303, id ? `/youtube?v=${id}` : sq ? `/youtube?q=${encodeURIComponent(sq)}` : '/youtube');
+    }
     await assertPublicHost(url.hostname);
 
     const headers = {
@@ -782,5 +917,6 @@ app.listen(PORT, () => {
   if (AUTH_ENABLED && !process.env.LUCCA_SECRET) {
     console.warn('Aviso: define LUCCA_SECRET para que los logins sobrevivan a un reinicio.');
   }
+  if (!YOUTUBE_API_KEY) console.warn('Aviso: sin YOUTUBE_API_KEY la búsqueda en /youtube está desactivada (los enlaces de video sí funcionan).');
   console.log(`Cookies de sitios: ${COOKIES_ENABLED ? 'activadas' : 'desactivadas'} | Dominios bloqueados: ${loadBlocklist().length}`);
 });
