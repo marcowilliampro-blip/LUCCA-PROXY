@@ -40,6 +40,12 @@ app.disable('x-powered-by');
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || 1);
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
+// Solo este servidor y tu página de LUCCA pueden mostrar el proxy dentro de un iframe
+const FRAME_ORIGINS = (process.env.FRAME_ORIGINS || 'https://marcowilliampro-blip.github.io').trim();
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', `frame-ancestors 'self' ${FRAME_ORIGINS}`);
+  next();
+});
 /* ====================================================================
  *  Utilidades de cookies del navegador (sin dependencias)
  * ==================================================================== */
@@ -53,13 +59,14 @@ function parseCookies(header) {
 }
 
 function setCookie(res, req, name, value, maxAgeSec) {
-  let c = `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax`;
+  // Para que funcione dentro de un iframe en otro sitio (tu página en github.io),
+  // con HTTPS las cookies deben ser SameSite=None; Secure; Partitioned. En local (http) se usa Lax.
+  let c = `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; ` +
+    (req.secure ? 'SameSite=None; Secure; Partitioned' : 'SameSite=Lax');
   if (maxAgeSec !== undefined) c += `; Max-Age=${maxAgeSec}`;
-  if (req.secure) c += '; Secure';
   const prev = res.getHeader('Set-Cookie');
   res.setHeader('Set-Cookie', prev ? [].concat(prev, c) : c);
 }
-
 /* ====================================================================
  *  Límite de peticiones
  * ==================================================================== */
