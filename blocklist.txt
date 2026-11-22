@@ -1,0 +1,7 @@
+# Dominios bloqueados en LUCCA (uno por línea).
+# Bloquear un dominio también bloquea todos sus subdominios.
+# Los cambios se aplican solos, sin reiniciar el servidor.
+# Las líneas que empiezan con # son comentarios.
+
+# ejemplo.com
+# *.sitio-no-deseado.net
